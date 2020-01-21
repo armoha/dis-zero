@@ -1,59 +1,49 @@
-use std::{ffi::OsString, mem, os::windows::ffi::OsStringExt};
-// source: https://www.unknowncheats.me/forum/general-programming-and-reversing/330583-pure-rust-injectable-dll.html
-use std::result::Result as StdResult;
+use proclist;
+use std::{ffi::OsString, convert::TryInto, io, mem, os::windows::ffi::OsStringExt};
+use process_memory::{Memory, DataMember, Pid, TryIntoProcessHandle, copy_address};
+use winapi::um::{tlhelp32, handleapi};
 
-use failure::{Error as FError, Fail};
-use getset::Getters;
-use winapi::um::{handleapi, memoryapi, processthreadsapi, tlhelp32, winnt};
-
-#[derive(Getters)]
-#[get = "pub"]
-pub struct GameProcess {
-    handle: winnt::HANDLE,
-    pid: u32,
+pub struct ProcessInfo {
+    pub pid: Pid,
+    pub base_addr: usize,
 }
 
-#[derive(Getters, Default)]
-#[get = "pub"]
-pub struct Module {
-    base: u32,
-}
-
-pub type Result<T> = StdResult<T, FError>;
-
-#[derive(Debug, Fail)]
-pub enum ProcessErrorKind {
-    #[fail(display = "Couldn't read memory at {:#X}", _0)]
-    MemoryRead(u32),
-
-    #[fail(display = "CreateToolhelp32Snapshot returned INVALID_HANDLE_VALUE")]
+pub enum Error {
+    NoProcessFound,
     InvalidHandleValue,
-
-    #[fail(display = "Unknown process: {}", _0)]
-    UnknownProcess(String),
-
-    #[fail(display = "Unknown module: {}", _0)]
-    UnknownModule(String),
-
-    #[fail(display = "InvalidBytesWritten: {}", _0)]
-    InvalidBytesWritten(u32),
+    UnknownModule,
 }
 
-impl GameProcess {
-    pub fn current_process() -> Self {
-        Self::new(unsafe { processthreadsapi::GetCurrentProcess() })
+impl Default for ProcessInfo {
+    fn default() -> ProcessInfo {
+        use std::process;
+
+        ProcessInfo {
+            pid: process::id(),
+            base_addr: 0,
+        }
+    }
+}
+
+impl ProcessInfo {
+    pub fn get_pinfo_by_name(name: &str) -> Result<ProcessInfo, Error> {
+        for process_info in proclist::iterate_processes_info().filter_map(|r| r.ok()) {
+            if process_info.name == name {
+                let base_addr = ProcessInfo::get_modbaseaddr(process_info.pid, name)?;
+                return Ok(ProcessInfo {
+                    pid: process_info.pid,
+                    base_addr: base_addr,
+                });
+            }
+        }
+        Err(Error::NoProcessFound)
     }
 
-    pub fn new(handle: winnt::HANDLE) -> Self {
-        let pid = unsafe { processthreadsapi::GetProcessId(handle) };
-        GameProcess { handle, pid }
-    }
-
-    pub fn get_module(&self, module_name: &str) -> Result<Module> {
+    fn get_modbaseaddr(pid: Pid, module_name: &str) -> Result<usize, Error> {
         let module =
-            unsafe { tlhelp32::CreateToolhelp32Snapshot(tlhelp32::TH32CS_SNAPMODULE, self.pid) };
+            unsafe { tlhelp32::CreateToolhelp32Snapshot(tlhelp32::TH32CS_SNAPMODULE, pid) };
         if module == handleapi::INVALID_HANDLE_VALUE {
-            return Err(ProcessErrorKind::InvalidHandleValue.into());
+            return Err(Error::InvalidHandleValue);
         }
 
         let mut entry: tlhelp32::MODULEENTRY32W = unsafe { mem::zeroed() };
@@ -72,102 +62,25 @@ impl GameProcess {
             if name.contains(module_name) {
                 unsafe { handleapi::CloseHandle(module) };
 
-                if cfg!(debug_assertions) {
-                    println!(
-                        "Base address of {}: 0x{:X} @ size of 0x{:X}",
-                        module_name, entry.modBaseAddr as u32, entry.modBaseSize
-                    );
-                }
+                /*println!(
+                    "Base address of {}: 0x{:X} @ size of 0x{:X}",
+                    module_name, entry.modBaseAddr as usize, entry.modBaseSize
+                );*/
 
-                return Ok(Module {
-                    base: entry.modBaseAddr as _,
-                });
+                return Ok(entry.modBaseAddr as _);
             }
         }
 
-        Err(ProcessErrorKind::UnknownModule(module_name.into()).into())
-    }
-}
-
-pub fn get_proc_by_name(name: &str) -> Result<GameProcess> {
-    let mut process: tlhelp32::PROCESSENTRY32W = unsafe { mem::MaybeUninit::uninit().assume_init() };
-    process.dwSize = mem::size_of::<tlhelp32::PROCESSENTRY32W>() as u32;
-
-    //Make a Snapshot of all the current process.
-    let snapshot = unsafe { tlhelp32::CreateToolhelp32Snapshot(tlhelp32::TH32CS_SNAPPROCESS, 0) };
-
-    //Get the first process and store it in process variable.
-    if unsafe { tlhelp32::Process32FirstW(snapshot, &mut process) } != 0 {
-        //Take the next process if possible.
-        while unsafe { tlhelp32::Process32NextW(snapshot, &mut process) } != 0 {
-            let process_name = OsString::from_wide(&process.szExeFile);
-
-            match process_name.into_string() {
-                Ok(s) => {
-                    if s.contains(name) {
-                        return Ok(GameProcess {
-                            handle: unsafe {
-                                processthreadsapi::OpenProcess(
-                                    winnt::PROCESS_VM_READ
-                                        | winnt::PROCESS_VM_OPERATION
-                                        | winnt::PROCESS_VM_WRITE,
-                                    0,
-                                    process.th32ProcessID,
-                                )
-                            },
-                            pid: process.th32ProcessID,
-                        });
-                    }
-                }
-                Err(_) => {
-                    println!(
-                        "Error converting process name for PID {}",
-                        process.th32ProcessID
-                    );
-                }
-            }
-        }
-    }
-    Err(ProcessErrorKind::UnknownProcess(name.into()).into())
-}
-
-impl Module {
-    pub fn read<T>(&self, offset: u32, parent: &GameProcess) -> Result<T> {
-        let mut read = unsafe { mem::MaybeUninit::uninit().assume_init() };
-        let mut amount_read: libc::size_t = 0;
-
-        if unsafe {
-            memoryapi::ReadProcessMemory(
-                *(&*parent).handle(),
-                (self.base + offset) as *const _,
-                &mut read as *mut _ as *mut _,
-                mem::size_of::<T>() as _,
-                &mut amount_read as *mut _,
-            )
-        } != (true as i32)
-            || amount_read == 0
-        {
-            mem::forget(read);
-            return Err(ProcessErrorKind::MemoryRead(self.base + offset).into());
-        }
-
-        Ok(read)
+        Err(Error::UnknownModule)
     }
 
-    pub fn write<T>(&mut self, parent: &GameProcess, offset: u32, mut value: T) -> Result<()> {
-        if unsafe {
-            memoryapi::WriteProcessMemory(
-                *(&*parent).handle(),
-                (self.base + offset) as *mut _,
-                &mut value as *mut _ as *mut _,
-                mem::size_of_val(&value),
-                std::ptr::null_mut(),
-            ) as usize
-        } == 0
-        {
-            return Err(ProcessErrorKind::InvalidBytesWritten(self.base + offset).into());
-        }
+    pub fn read_address(&self, address: usize, size: usize) -> io::Result<Vec<u8>> {
+        let handle = self.pid.try_into_process_handle()?;
+        let bytes = copy_address(self.base_addr + address, size, &handle)?;
+        Ok(bytes)
+    }
 
+    pub fn write_address(&self, address: usize, bytes: Vec<u8>) -> io::Result<()> {
         Ok(())
     }
 }

@@ -1,24 +1,24 @@
 [package]
 name = "dis-zero"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["armoha <kein0011@naver.com>"]
 license = "MIT/Apache-2.0"
 edition = "2018"
 build = "src/build.rs"
 
 [dependencies]
-winapi = { version = "^0.3", features = ["std", "everything"] }
-libc = { version = "^0.2", features = ["use_std", "extra_traits"] }
-getset = "^0.0"
-failure = "^0.1"
-
-[build-dependencies]
-failure = "^0.1"
-
-[target.'cfg(windows)'.build-dependencies]
-winres = "0.1.9"
+winapi = { version = "0.3", features = [ "tlhelp32", "handleapi" ] }
+proclist = "0.9"
+process-memory = "0.3.0"
+reqwest = { version = "0.10", features = ["blocking", "json"] }
 
 [package.metadata.winres]
 OriginalFilename = "DisZero.exe"
-LegalCopyright = "Copyright © 2019"
+LegalCopyright = "Copyright © 2019-2020"
 FileDescription = "DisZero"
+
+# always use target build-dependencies for winres so that
+# it won't get pulled for non-windows OSs (saves them resources)
+[target.'cfg(target_os="windows")'.build-dependencies]
+winres = "0.1.9"
+winapi = { version = "0.3", features = [ "winnt" ] }
