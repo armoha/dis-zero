@@ -3,24 +3,6 @@ mod mem_lib;
 use std::{thread, time};
 
 fn main() {
-    /*
-    let sc = mem_lib::ProcessInfo::get_pinfo_by_name("StarCraft.exe");
-    match sc {
-        Ok(s) => {
-            match s.read_address(0xC5_32E8, 11) {
-                Ok(v) => {
-                    use std::str;
-
-                    println!("{}", str::from_utf8(&v).unwrap());
-                }
-                Err(e) => {
-                    println!("{}", e);
-                },
-            }
-        },
-        Err(_) => ()
-    };
-    */
     let sc = &mut scr::SCInfo::default();
     println!("스타크래프트 최신 정보 가져오는 중...");
     if let Err(e) = sc.update() {

@@ -19,11 +19,11 @@ pub struct SCInfo {
 impl Default for SCData {
     fn default() -> SCData {
         SCData {
-            version: "1.23.2.6926".to_string(),
-            version_offset32: 0x9FEA18,
-            version_offset64: 0xC532E8,
-            droptimer_offset32: 0xC74044,
-            droptimer_offset64: 0xF0B31C,
+            version: "1.23.3.7146".to_string(),
+            version_offset32: 0xA6FB20,
+            version_offset64: 0xC76488,
+            droptimer_offset32: 0xCE7154,
+            droptimer_offset64: 0xF310AC,
         }
     }
 }
@@ -133,7 +133,7 @@ impl SCInfo {
     pub fn run(&mut self) {
         match self.state {
             State::WaitingStarCraft => {
-                let pinfo = match SCInfo::get_sc_pinfo() {
+                self.process = match SCInfo::get_sc_pinfo() {
                     Ok(p) => p,
                     Err(_) => {
                         self.event = Event::NotHappened;
@@ -141,7 +141,7 @@ impl SCInfo {
                     }
                 };
                 let version_offset = self.get_version_offset();
-                let my_version = pinfo
+                let my_version = self.process
                     .read_address(version_offset, 11)
                     .unwrap_or(vec![0; 11]);
                 use std::str;
@@ -150,7 +150,6 @@ impl SCInfo {
                 }
                 let sc_version = self.scdata.version.clone();
                 self.event = if sc_version.into_bytes() == my_version {
-                    self.process = pinfo;
                     Event::Found
                 } else {
                     Event::Mismatched

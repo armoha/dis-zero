@@ -6,6 +6,12 @@ license = "MIT/Apache-2.0"
 edition = "2018"
 build = "src/build.rs"
 
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = 'abort'
+
 [dependencies]
 winapi = { version = "0.3", features = [ "tlhelp32", "handleapi" ] }
 proclist = "0.9"

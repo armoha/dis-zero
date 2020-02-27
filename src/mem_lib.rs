@@ -1,6 +1,6 @@
 use proclist;
-use std::{ffi::OsString, convert::TryInto, io, mem, os::windows::ffi::OsStringExt};
-use process_memory::{Memory, DataMember, Pid, TryIntoProcessHandle, copy_address};
+use std::{ffi::OsString, io, mem, os::windows::ffi::OsStringExt};
+use process_memory::{Pid, TryIntoProcessHandle, copy_address};
 use winapi::um::{tlhelp32, handleapi};
 
 pub struct ProcessInfo {
@@ -78,9 +78,5 @@ impl ProcessInfo {
         let handle = self.pid.try_into_process_handle()?;
         let bytes = copy_address(self.base_addr + address, size, &handle)?;
         Ok(bytes)
-    }
-
-    pub fn write_address(&self, address: usize, bytes: Vec<u8>) -> io::Result<()> {
-        Ok(())
     }
 }
