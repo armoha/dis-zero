@@ -1,0 +1,20 @@
+function init() {
+    CenterView("mid");
+    CreateUnitWithProperties(1, "Zerg Scourge", "mid", AllPlayers, UnitProperty(invincible=True));
+}
+
+function onPluginStart() {
+    init();
+}
+
+function afterTriggerExec() {
+    const cp = getuserplayerid();
+    setcurpl(cp);
+    if(Bring(cp, Exactly, 1, "Zerg Scourge", "mid")) {
+        DisplayText("에닥");
+        dwwrite(0x59CC80, 0xEDACEDAC);
+    } else {
+        DisplayText("닥에");
+        dwwrite(0x59CC80, 0xCADECADE);
+    }
+}

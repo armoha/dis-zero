@@ -1,0 +1,7 @@
+[main]
+input: ../base.scx
+output: diszero.scx
+[freeze]
+freeze: 0
+[main.eps]
+[EUDTurbo]
