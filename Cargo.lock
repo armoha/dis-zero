@@ -38,7 +38,7 @@ checksum = "7477065d45a8fe57167bf3cf8bcd3729b54cfcb81cca49bda2d038ea89ae82ca"
 
 [[package]]
 name = "dis-zero"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "process-memory",
  "proclist",
