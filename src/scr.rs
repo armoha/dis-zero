@@ -1,16 +1,32 @@
-use crate::mem_lib::{Error, ProcessInfo};
+use crate::mem_lib;
 use process_memory;
+use serde::{de::Error, Deserialize, Deserializer};
 
+fn from_hex<'de, D>(deserializer: D) -> Result<usize, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let s: &str = Deserialize::deserialize(deserializer)?;
+    // do better hex decoding than this
+    usize::from_str_radix(&s[2..], 16).map_err(D::Error::custom)
+}
+
+#[allow(non_snake_case)]
+#[derive(Deserialize)]
 pub struct SCData {
     pub version: String,
-    version_offset32: usize,
-    version_offset64: usize,
-    droptimer_offset32: usize,
-    droptimer_offset64: usize,
+    #[serde(deserialize_with = "from_hex")]
+    versionOffset32: usize,
+    #[serde(deserialize_with = "from_hex")]
+    versionOffset64: usize,
+    #[serde(deserialize_with = "from_hex")]
+    dropTimerOffset32: usize,
+    #[serde(deserialize_with = "from_hex")]
+    dropTimerOffset64: usize,
 }
 
 pub struct SCInfo {
-    process: ProcessInfo,
+    process: mem_lib::ProcessInfo,
     pub scdata: SCData,
     pub state: State,
     pub event: Event,
@@ -20,10 +36,10 @@ impl Default for SCData {
     fn default() -> SCData {
         SCData {
             version: "1.23.7.9198".to_string(),
-            version_offset32: 0xB4D210,
-            version_offset64: 0xDE6CF8,
-            droptimer_offset32: 0xDD0F3C,
-            droptimer_offset64: 0x10B2C5C,
+            versionOffset32: 0xB4D210,
+            versionOffset64: 0xDE6CF8,
+            dropTimerOffset32: 0xDD0F3C,
+            dropTimerOffset64: 0x10B2C5C,
         }
     }
 }
@@ -45,7 +61,7 @@ pub enum Event {
 impl Default for SCInfo {
     fn default() -> SCInfo {
         SCInfo {
-            process: ProcessInfo::default(),
+            process: mem_lib::ProcessInfo::default(),
             scdata: SCData::default(),
             state: State::WaitingStarCraft,
             event: Event::NotHappened,
@@ -56,42 +72,8 @@ impl Default for SCInfo {
 impl SCInfo {
     #[allow(dead_code)]
     pub fn update(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        use std::collections::HashMap;
-
         let url = "https://raw.githubusercontent.com/armoha/dis-zero/master/scdata.json";
-        let resp = reqwest::blocking::get(url)?.json::<HashMap<String, String>>()?;
-
-        // println!("{:#?}", resp);
-
-        for (k, v) in &resp {
-            match &k[..] {
-                "version" => {
-                    self.scdata.version = v.to_string();
-                }
-                "versionOffset32" => {
-                    if let Ok(x) = usize::from_str_radix(v, 16) {
-                        self.scdata.version_offset32 = x;
-                    }
-                }
-                "versionOffset64" => {
-                    if let Ok(x) = usize::from_str_radix(v, 16) {
-                        self.scdata.version_offset64 = x;
-                    }
-                }
-                "dropTimerOffset32" => {
-                    if let Ok(x) = usize::from_str_radix(v, 16) {
-                        self.scdata.droptimer_offset32 = x;
-                    }
-                }
-                "dropTimerOffset64" => {
-                    if let Ok(x) = usize::from_str_radix(v, 16) {
-                        self.scdata.droptimer_offset64 = x;
-                    }
-                }
-                _ => (),
-            }
-        }
-
+        self.scdata = ureq::get(url).call()?.into_json()?;
         Ok(())
     }
     pub fn next(&mut self) {
@@ -113,21 +95,21 @@ impl SCInfo {
             }
         };
     }
-    pub fn get_sc_pinfo() -> Result<ProcessInfo, Error> {
-        ProcessInfo::get_pinfo_by_name("StarCraft.exe")
+    pub fn get_sc_pinfo() -> Result<mem_lib::ProcessInfo, mem_lib::Error> {
+        mem_lib::ProcessInfo::get_pinfo_by_name("StarCraft.exe")
     }
     fn get_version_offset(&self) -> usize {
         if self.process.base_addr < 0x7FFFFFFF {
-            self.scdata.version_offset32
+            self.scdata.versionOffset32
         } else {
-            self.scdata.version_offset64
+            self.scdata.versionOffset64
         }
     }
     fn get_droptimer_offset(&self) -> usize {
         if self.process.base_addr < 0x7FFFFFFF {
-            self.scdata.droptimer_offset32
+            self.scdata.dropTimerOffset32
         } else {
-            self.scdata.droptimer_offset64
+            self.scdata.dropTimerOffset64
         }
     }
     pub fn run(&mut self) {
