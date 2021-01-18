@@ -15,7 +15,7 @@ panic = 'abort'
 [dependencies]
 winapi = { version = "0.3", features = [ "tlhelp32", "handleapi" ] }
 proclist = "0.9"
-process-memory = "0.3"
+process-memory = "0.4"
 ureq = { version = "*", features = ["json"] }
 serde = { version = "1.0.101", features = ["derive"] }
 

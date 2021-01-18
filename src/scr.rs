@@ -6,7 +6,7 @@ fn from_hex<'de, D>(deserializer: D) -> Result<usize, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let s: &str = Deserialize::deserialize(deserializer)?;
+    let s: String = Deserialize::deserialize(deserializer)?;
     // do better hex decoding than this
     usize::from_str_radix(&s[2..], 16).map_err(D::Error::custom)
 }
@@ -129,13 +129,20 @@ impl SCInfo {
                     .read_address(version_offset, self.scdata.version.len())
                 {
                     if let Ok(t) = str::from_utf8(&my_version) {
-                        println!("버전: {}", t);
-                        if self.scdata.version == t {
-                            self.event = Event::Found;
-                            return;
-                        } else {
-                            self.event = Event::Mismatched;
-                        };
+                        match t {
+                            _ if t == self.scdata.version => {
+                                self.event = Event::Found;
+                                return;
+                            },
+                            " version un" => {
+                                self.event = Event::NotHappened;
+                                return;
+                            },
+                            _ => {
+                                println!("버전: {}", t);
+                                self.event = Event::Mismatched;
+                            },
+                        }
                     }
                 }
                 use std::io::stdin;

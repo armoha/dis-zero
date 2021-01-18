@@ -170,9 +170,9 @@ dependencies = [
 
 [[package]]
 name = "process-memory"
-version = "0.3.0"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fc5ca614491c267fa165db985fc84c7f266e5e374c8e02fa73b8d44ddbc08371"
+checksum = "61d7c67e1d5e7e8e100ce1240b08e3a7249fe7d02b04232f006f8f60f27791fe"
 dependencies = [
  "libc",
  "mach",
