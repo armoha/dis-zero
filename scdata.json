@@ -1,7 +1,7 @@
 {
-  "version": "1.23.6.8974",
-  "versionOffset32": "0xB6C210",
-  "versionOffset64": "0xDD4CF8",
-  "dropTimerOffset32": "0xDEFF3C",
-  "dropTimerOffset64": "0x10A0C5C"
+  "version": "1.23.7.9198",
+  "versionOffset32": "0xB4D210",
+  "versionOffset64": "0xDE6CF8",
+  "dropTimerOffset32": "0xDD0F3C",
+  "dropTimerOffset64": "0x10B2C5C"
 }
