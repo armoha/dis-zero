@@ -35,11 +35,11 @@ pub struct SCInfo {
 impl Default for SCData {
     fn default() -> SCData {
         SCData {
-            version: "1.23.7.9198".to_string(),
-            versionOffset32: 0xB4D210,
-            versionOffset64: 0xDE6CF8,
-            dropTimerOffset32: 0xDD0F3C,
-            dropTimerOffset64: 0x10B2C5C,
+            version: "1.23.8.9341".to_string(),
+            versionOffset32: 0xB75210,
+            versionOffset64: 0xDF1CF8,
+            dropTimerOffset32: 0xDF8F3C,
+            dropTimerOffset64: 0x10BDC6C,
         }
     }
 }
@@ -133,15 +133,15 @@ impl SCInfo {
                             _ if t == self.scdata.version => {
                                 self.event = Event::Found;
                                 return;
-                            },
+                            }
                             " version un" => {
                                 self.event = Event::NotHappened;
                                 return;
-                            },
+                            }
                             _ => {
                                 println!("버전: {}", t);
                                 self.event = Event::Mismatched;
-                            },
+                            }
                         }
                     }
                 }

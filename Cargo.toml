@@ -13,11 +13,11 @@ codegen-units = 1
 panic = 'abort'
 
 [dependencies]
-winapi = { version = "0.3", features = [ "tlhelp32", "handleapi" ] }
+winapi = { version = "0.3", features = ["tlhelp32", "handleapi"] }
 proclist = "0.9"
 process-memory = "0.4"
 ureq = { version = "*", features = ["json"] }
-serde = { version = "1.0.101", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
 
 [package.metadata.winres]
 OriginalFilename = "DisZero.exe"
@@ -27,5 +27,5 @@ FileDescription = "DisZero"
 # always use target build-dependencies for winres so that
 # it won't get pulled for non-windows OSs (saves them resources)
 [target.'cfg(target_os="windows")'.build-dependencies]
-winres = "0.1.9"
-winapi = { version = "0.3", features = [ "winnt" ] }
+winres = "0.1"
+winapi = { version = "0.3", features = ["winnt"] }
