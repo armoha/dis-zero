@@ -35,11 +35,11 @@ pub struct SCInfo {
 impl Default for SCData {
     fn default() -> SCData {
         SCData {
-            version: "1.23.8.9341".to_string(),
-            versionOffset32: 0xB75210,
-            versionOffset64: 0xDF1CF8,
-            dropTimerOffset32: 0xDF8F3C,
-            dropTimerOffset64: 0x10BDC6C,
+            version: "1.23.8.9373".to_string(),
+            versionOffset32: 0xB7A210,
+            versionOffset64: 0xDE3CF8,
+            dropTimerOffset32: 0xDFDF3C,
+            dropTimerOffset64: 0x10AFC3C,
         }
     }
 }
